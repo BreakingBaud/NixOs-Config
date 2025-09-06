@@ -71,6 +71,15 @@ let
     ];
   };
 
+  # # Only enable NVIDIA on machines that have it
+  # hardware.nvidia = lib.mkIf (builtins.pathExists /sys/class/drm/card0) {
+  #   modesetting.enable = true;
+  #   open = true;
+  #   nvidiaSettings = true;
+  # };
+  
+  # services.xserver.videoDrivers = lib.mkIf (builtins.pathExists /sys/class/drm/card0) [ "nvidia" ];
+
   # ========================================
   # USERS
   # ========================================
@@ -94,6 +103,42 @@ let
       # (nerd-fonts.override { fonts = [ "JetBrainsMono" ]; })
     ];
   };
+
+   # Enable the sunshine service
+  systemd.user.services.sunshine = {
+    description = "Sunshine streaming server";
+    wantedBy = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.sunshine}/bin/sunshine";
+      Restart = "on-failure";
+    };
+  };
+
+  # Required for Wayland screen capture
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-wlr ];
+  };
+
+  # Firewall configuration
+  networking.firewall = {
+    allowedTCPPorts = [ 47984 47989 47990 48010 ];
+    allowedUDPPortRanges = [
+      { from = 47998; to = 48000; }
+    ];
+  };
+
+  # Enable avahi for discovery
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    publish = {
+      enable = true;
+      addresses = true;
+      workstation = true;
+    };
+  };
+
 
   # ========================================
   # NIX CONFIGURATION
@@ -130,6 +175,9 @@ let
     vesktop
     obsidian
     spotify
+    steam
+    gamescope
+    sunshine
 
     # Development Tools
     helix
@@ -244,6 +292,13 @@ let
     # Shell & Prompt
     fish.enable = true;
     starship.enable = true;
+
+    # Steam
+    steam = {
+      enable = true;
+      extraCompatPackages = [
+      pkgs.proton-ge-bin ];
+    };
 
     # Development
     git.enable = true;
